@@ -19,6 +19,8 @@
 (function() {
     'use strict';
 
+    const _startTime = performance.now();
+
     // ============================================================================
     // MODULE: I18n (Internationalization)
     // ============================================================================
@@ -2494,5 +2496,7 @@
     };
 
     UIController.init();
+
+    console.log(`[RequestRepeater] Initialized in ${(performance.now() - _startTime).toFixed(2)}ms`);
 
 })();

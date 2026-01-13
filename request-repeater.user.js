@@ -954,6 +954,12 @@
                                         <input type="number" class="rr-repeat-input" value="1" min="1" max="100" title="${I18n.t('repeatTimes')}">
                                         <button class="rr-btn-mini rr-btn-repeat" data-id="${req.id}">▶</button>
                                     </div>
+                                    <div class="rr-timer-control">
+                                        <input type="number" class="rr-timer-interval" value="60" min="5" max="3600" title="${I18n.t('timerInterval')}">
+                                        <button class="rr-btn-mini rr-btn-timer-toggle ${this._activeTimers[req.id] ? 'rr-timer-running' : ''}" data-id="${req.id}">
+                                            ${this._activeTimers[req.id] ? '⏹' : '⏱'}
+                                        </button>
+                                    </div>
                                     <button class="rr-btn-mini rr-btn-edit-mini" data-id="${req.id}">✎</button>
                                 </div>
                             </div>
@@ -977,9 +983,18 @@
             panel.querySelectorAll('.rr-btn-repeat').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const id = btn.dataset.id;
-                    const input = btn.parentElement.querySelector('.rr-repeat-input');
+                    const input = btn.closest('.rr-floating-item').querySelector('.rr-repeat-input');
                     const times = parseInt(input.value) || 1;
                     this._handleRepeatExecute(id, times, btn);
+                });
+            });
+
+            panel.querySelectorAll('.rr-btn-timer-toggle').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.dataset.id;
+                    const input = btn.closest('.rr-floating-item').querySelector('.rr-timer-interval');
+                    const interval = parseInt(input.value) || 60;
+                    this._handleTimerToggle(id, interval, btn);
                 });
             });
 
@@ -989,6 +1004,30 @@
                     this.showAddDialog(btn.dataset.id);
                 });
             });
+        },
+
+        _activeTimers: {},
+
+        _handleTimerToggle(requestId, interval, btn) {
+            if (this._activeTimers[requestId]) {
+                clearInterval(this._activeTimers[requestId]);
+                delete this._activeTimers[requestId];
+                btn.textContent = '⏱';
+                btn.classList.remove('rr-timer-running');
+                this.showNotification(I18n.t('timerStopped'), 'info');
+            } else {
+                const request = StorageAdapter.getRequest(requestId);
+                
+                this._handleExecute(requestId);
+                
+                this._activeTimers[requestId] = setInterval(() => {
+                    this._handleExecute(requestId);
+                }, interval * 1000);
+
+                btn.textContent = '⏹';
+                btn.classList.add('rr-timer-running');
+                this.showNotification(I18n.t('timerRunning', {name: request?.name || 'Request'}), 'success');
+            }
         },
 
         _closeFloatingPanel() {
@@ -2149,6 +2188,46 @@
                 
                 .rr-btn-edit-mini:hover {
                     background: #e5e7eb;
+                }
+                
+                .rr-timer-control {
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                }
+                
+                .rr-timer-interval {
+                    width: 42px;
+                    padding: 4px 6px;
+                    border: 1px solid #d1d5db;
+                    border-radius: 4px;
+                    font-size: 11px;
+                    text-align: center;
+                }
+                
+                .rr-timer-interval:focus {
+                    outline: none;
+                    border-color: #3b82f6;
+                }
+                
+                .rr-btn-timer-toggle {
+                    background: #f3f4f6;
+                    color: #374151;
+                }
+                
+                .rr-btn-timer-toggle:hover {
+                    background: #e5e7eb;
+                }
+                
+                .rr-btn-timer-toggle.rr-timer-running {
+                    background: linear-gradient(135deg, #f59e0b, #d97706);
+                    color: white;
+                    animation: rr-pulse 2s infinite;
+                }
+                
+                @keyframes rr-pulse {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.7; }
                 }
             `);
         },

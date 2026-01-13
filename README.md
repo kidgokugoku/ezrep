@@ -111,14 +111,23 @@ See:
 ### Cookie Replacement
 
 **How it works:**
+
+**Option 1: Replace Specific Cookies**
 1. Your curl command contains: `Cookie: sessionId=old; token=abc`
 2. Current page has: `sessionId=new; userId=123`
 3. You configure to replace: `sessionId`
 4. Final request sends: `Cookie: sessionId=new; token=abc`
 
+**Option 2: Replace ALL Cookies (Leave Empty)**
+1. Your curl command contains: `Cookie: sessionId=old; token=abc`
+2. Current page has: `sessionId=new; userId=123`
+3. You configure: *(leave empty)*
+4. Final request sends: `Cookie: sessionId=new; userId=123` (all current page cookies)
+
 **Per-Request Configuration:**
 - Each request can specify different cookies to replace
-- Leave empty to use curl's original cookies
+- **Leave empty** = use ALL current page cookies (ignore curl cookies)
+- **Specify names** = replace only those cookies from curl
 
 ---
 

@@ -795,11 +795,15 @@
         },
 
         _matchPattern(url, pattern) {
+            // Strip query parameters - only match path before '?'
+            const urlWithoutQuery = url.split('?')[0];
+            const patternWithoutQuery = pattern.split('?')[0];
+            
             const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const patternRegex = new RegExp(
-                '^' + escapeRegex(pattern).replace(/\\\*/g, '.*') + '$'
+                '^' + escapeRegex(patternWithoutQuery).replace(/\\\*/g, '.*') + '$'
             );
-            return patternRegex.test(url);
+            return patternRegex.test(urlWithoutQuery);
         },
 
         getRequestsForCurrentUrl() {

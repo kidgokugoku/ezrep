@@ -923,11 +923,6 @@
 
         showExecuteDialog() {
             const requests = RequestManager.getRequestsForCurrentUrl();
-            
-            if (requests.length === 0) {
-                this.showNotification(I18n.t('notifNoRequests'), 'info');
-                return;
-            }
 
             this._closeFloatingPanel();
 
@@ -937,38 +932,45 @@
                 <div class="rr-floating-header">
                     <span class="rr-floating-title">⚡ ${I18n.t('dialogExecuteTitle')}</span>
                     <div class="rr-floating-controls">
+                        <button class="rr-floating-add" title="${I18n.t('menuAdd')}">+</button>
                         <button class="rr-floating-minimize">−</button>
                         <button class="rr-floating-close">×</button>
                     </div>
                 </div>
                 <div class="rr-floating-body">
                     <div class="rr-floating-url">${this._shortenUrl(window.location.href)}</div>
-                    <div class="rr-floating-list">
-                        ${requests.map(req => `
-                            <div class="rr-floating-item" data-id="${req.id}">
-                                <div class="rr-floating-item-info">
-                                    <div class="rr-floating-item-name">${this._escapeHtml(req.name)}</div>
-                                    <div class="rr-floating-item-meta">
-                                        <code>${req.parsedRequest?.method || 'GET'}</code>
-                                        ${req.lastExecuted ? `<span>${this._formatTime(req.lastExecuted)}</span>` : ''}
+                    ${requests.length === 0 ? `
+                        <div class="rr-floating-empty">${I18n.t('notifNoRequests')}</div>
+                    ` : `
+                        <div class="rr-floating-list">
+                            ${requests.map(req => `
+                                <div class="rr-floating-item" data-id="${req.id}">
+                                    <div class="rr-floating-item-info">
+                                        <div class="rr-floating-item-name">${this._escapeHtml(req.name)}</div>
+                                        <div class="rr-floating-item-meta">
+                                            <code>${req.parsedRequest?.method || 'GET'}</code>
+                                            ${req.lastExecuted ? `<span>${this._formatTime(req.lastExecuted)}</span>` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="rr-floating-item-actions">
+                                        <div class="rr-action-row">
+                                            <div class="rr-repeat-control">
+                                                <input type="number" class="rr-repeat-input" value="1" min="1" max="100" title="${I18n.t('repeatTimes')}">
+                                                <button class="rr-btn-mini rr-btn-repeat" data-id="${req.id}">▶</button>
+                                            </div>
+                                            <div class="rr-timer-control">
+                                                <input type="number" class="rr-timer-interval" value="60" min="5" max="3600" title="${I18n.t('timerInterval')}">
+                                                <button class="rr-btn-mini rr-btn-timer-toggle ${this._activeTimers[req.id] ? 'rr-timer-running' : ''}" data-id="${req.id}">
+                                                    ${this._activeTimers[req.id] ? '⏹' : '⏱'}
+                                                </button>
+                                            </div>
+                                            <button class="rr-btn-mini rr-btn-edit-mini" data-id="${req.id}">✎</button>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="rr-floating-item-actions">
-                                    <div class="rr-repeat-control">
-                                        <input type="number" class="rr-repeat-input" value="1" min="1" max="100" title="${I18n.t('repeatTimes')}">
-                                        <button class="rr-btn-mini rr-btn-repeat" data-id="${req.id}">▶</button>
-                                    </div>
-                                    <div class="rr-timer-control">
-                                        <input type="number" class="rr-timer-interval" value="60" min="5" max="3600" title="${I18n.t('timerInterval')}">
-                                        <button class="rr-btn-mini rr-btn-timer-toggle ${this._activeTimers[req.id] ? 'rr-timer-running' : ''}" data-id="${req.id}">
-                                            ${this._activeTimers[req.id] ? '⏹' : '⏱'}
-                                        </button>
-                                    </div>
-                                    <button class="rr-btn-mini rr-btn-edit-mini" data-id="${req.id}">✎</button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
+                            `).join('')}
+                        </div>
+                    `}
                 </div>
             `;
 
@@ -982,6 +984,10 @@
 
             panel.querySelector('.rr-floating-minimize').addEventListener('click', () => {
                 panel.classList.toggle('rr-floating-minimized');
+            });
+
+            panel.querySelector('.rr-floating-add').addEventListener('click', () => {
+                this.showAddDialog();
             });
 
             panel.querySelectorAll('.rr-btn-repeat').forEach(btn => {
@@ -1004,7 +1010,6 @@
 
             panel.querySelectorAll('.rr-btn-edit-mini').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    this._closeFloatingPanel();
                     this.showAddDialog(btn.dataset.id);
                 });
             });
@@ -1036,6 +1041,12 @@
 
         _closeFloatingPanel() {
             document.querySelectorAll('.rr-floating-panel').forEach(el => el.remove());
+        },
+
+        _refreshFloatingPanel() {
+            if (document.querySelector('.rr-floating-panel')) {
+                this.showExecuteDialog();
+            }
         },
 
         _makeDraggable(element) {
@@ -1488,6 +1499,7 @@
                         'success'
                     );
                     this._closeCurrentDialog();
+                    this._refreshFloatingPanel();
                 } else {
                     this.showNotification(`${I18n.t('notifError')}: ${result.error}`, 'error');
                 }
@@ -2009,7 +2021,7 @@
                     position: fixed;
                     top: 20px;
                     right: 20px;
-                    width: 320px;
+                    width: 420px;
                     background: #fff;
                     border-radius: 12px;
                     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
@@ -2085,9 +2097,9 @@
                 
                 .rr-floating-item {
                     display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    padding: 10px 12px;
+                    flex-direction: column;
+                    gap: 10px;
+                    padding: 12px 14px;
                     background: #f9fafb;
                     border-radius: 8px;
                     border: 1px solid #e5e7eb;
@@ -2102,7 +2114,6 @@
                 .rr-floating-item-info {
                     flex: 1;
                     min-width: 0;
-                    margin-right: 10px;
                 }
                 
                 .rr-floating-item-name {
@@ -2138,8 +2149,27 @@
                 .rr-floating-item-actions {
                     display: flex;
                     align-items: center;
-                    gap: 6px;
+                    justify-content: flex-end;
+                    gap: 8px;
                     flex-shrink: 0;
+                }
+                
+                .rr-action-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                }
+                
+                .rr-floating-empty {
+                    text-align: center;
+                    padding: 24px;
+                    color: #6b7280;
+                    font-size: 14px;
+                }
+                
+                .rr-floating-add {
+                    font-weight: bold;
+                    font-size: 18px !important;
                 }
                 
                 .rr-repeat-control {

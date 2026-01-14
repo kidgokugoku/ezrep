@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Request Repeater",
-  "version": "1.0.0",
-  "description": "Execute curl requests with current page cookies - bind requests to URL patterns",
+  "version": "1.1.0",
+  "description": "Save curl commands, bind to URL patterns, execute with current page cookies. Features: request chaining, persistent timers, groups, dark mode.",
   "browser_specific_settings": {
     "gecko": {
-      "id": "request-repeater@example.com",
+      "id": "{e8a7e5c0-1234-4567-89ab-cdef01234567}",
       "strict_min_version": "109.0"
     }
   },

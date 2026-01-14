@@ -735,13 +735,22 @@
 
         _sendRequest(config) {
             return new Promise((resolve, reject) => {
+                console.log('[RequestRepeater] Sending:', config.method, config.url, config.headers);
+
                 GM_xmlhttpRequest({
                     method: config.method,
                     url: config.url,
                     headers: config.headers,
                     data: config.data,
-                    onload: (response) => resolve(response),
-                    onerror: (error) => reject(error),
+                    anonymous: false,
+                    onload: (response) => {
+                        console.log('[RequestRepeater] Response:', response.status, response.finalUrl);
+                        resolve(response);
+                    },
+                    onerror: (error) => {
+                        console.error('[RequestRepeater] Error:', error);
+                        reject(error);
+                    },
                     ontimeout: () => reject(new Error('Request timeout'))
                 });
             });
@@ -909,7 +918,18 @@
         init() {
             this._injectStyles();
             this._registerMenuCommands();
+            this._autoShowIfBound();
             console.log('[UIController] Initialized');
+        },
+
+        _autoShowIfBound() {
+            const boundRequests = RequestManager.getRequestsForCurrentUrl();
+            if (boundRequests.length > 0) {
+                setTimeout(() => {
+                    this.showExecuteDialog();
+                    console.log(`[UIController] Auto-showing panel: ${boundRequests.length} bound request(s)`);
+                }, 500);
+            }
         },
 
         _registerMenuCommands() {

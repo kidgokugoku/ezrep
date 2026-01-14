@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Request Repeater - Management</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>⚡ Request Repeater</h1>
+      <div class="header-actions">
+        <button class="btn btn-primary" id="exportBtn">📥 <span id="exportBtnText">Export</span></button>
+        <button class="btn btn-secondary" id="importBtn">📤 <span id="importBtnText">Import</span></button>
+        <input type="file" id="importFile" accept=".json" style="display:none">
+      </div>
+    </header>
+
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card">
+        <div class="stat-value" id="statTotal">0</div>
+        <div class="stat-label" id="labelTotal">Total Requests</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statExecutions">0</div>
+        <div class="stat-label" id="labelExecutions">Total Executions</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statSuccess">0%</div>
+        <div class="stat-label" id="labelSuccess">Success Rate</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <h2 id="sectionTitle">All Requests</h2>
+        <div class="batch-actions">
+          <label class="select-all-label">
+            <input type="checkbox" id="selectAll">
+            <span id="labelSelectAll">Select All</span>
+          </label>
+          <button class="btn btn-primary" id="batchExecBtn" disabled>Execute Selected (0)</button>
+        </div>
+      </div>
+
+      <div class="request-table" id="requestTable">
+        <div class="empty-state" id="emptyState">No requests yet. Add one from the popup.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dialog-overlay" id="editDialog" style="display: none;">
+    <div class="dialog dialog-large">
+      <div class="dialog-header">
+        <h2 id="dialogTitle">Edit Request</h2>
+        <button class="close-btn" id="closeDialog">&times;</button>
+      </div>
+      <form id="editForm">
+        <div class="form-group">
+          <label id="labelEditName">Request Name *</label>
+          <input type="text" id="editName" required>
+        </div>
+        <div class="form-group">
+          <label id="labelEditPattern">URL Pattern *</label>
+          <input type="text" id="editPattern" required>
+        </div>
+        <div class="form-group">
+          <label id="labelEditCurl">cURL Command *</label>
+          <textarea id="editCurl" rows="10" required></textarea>
+        </div>
+        <div class="form-group">
+          <label id="labelEditCookie">Cookie Replace List</label>
+          <input type="text" id="editCookie">
+          <small id="hintEditCookie">Comma-separated. Leave empty to use all page cookies.</small>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-danger" id="deleteBtn">Delete</button>
+          <div style="flex:1"></div>
+          <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveBtn">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="../shared/i18n.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

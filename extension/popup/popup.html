@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <div class="popup-header">
+      <h1>⚡ Request Repeater</h1>
+    </div>
+    
+    <div class="popup-url" id="currentUrl"></div>
+    
+    <div class="popup-section">
+      <div class="section-title" id="matchedTitle">Matched Requests</div>
+      <div class="request-list" id="requestList"></div>
+    </div>
+    
+    <div class="popup-section batch-section" id="batchSection" style="display: none;">
+      <button class="btn btn-success btn-full" id="executeAllBtn">
+        <span>▶</span> <span id="executeAllText">Execute All</span>
+      </button>
+    </div>
+    
+    <div class="popup-actions">
+      <button class="btn btn-primary" id="addBtn">
+        <span>➕</span> <span id="addBtnText">Add Request</span>
+      </button>
+      <button class="btn btn-secondary" id="manageBtn">
+        <span>⚙️</span> <span id="manageBtnText">Manage</span>
+      </button>
+    </div>
+  </div>
+  
+  <div class="dialog-overlay" id="addDialog" style="display: none;">
+    <div class="dialog">
+      <div class="dialog-header">
+        <h2 id="dialogTitle">Add New Request</h2>
+        <button class="close-btn" id="closeDialog">&times;</button>
+      </div>
+      <form id="requestForm">
+        <div class="form-group">
+          <label id="labelName">Request Name *</label>
+          <input type="text" id="inputName" required>
+        </div>
+        <div class="form-group">
+          <label id="labelPattern">URL Pattern *</label>
+          <input type="text" id="inputPattern" required>
+          <small id="hintPattern">Use * as wildcard</small>
+        </div>
+        <div class="form-group">
+          <label id="labelCurl">cURL Command *</label>
+          <textarea id="inputCurl" rows="6" required></textarea>
+        </div>
+        <div class="form-group">
+          <label id="labelCookie">Cookie Replace List</label>
+          <input type="text" id="inputCookie">
+          <small id="hintCookie">Comma-separated. Leave empty to use all page cookies.</small>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="submitBtn">Add</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="../shared/i18n.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

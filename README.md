@@ -2,11 +2,27 @@
 
 ## 📖 Overview
 
-**Request Repeater** is a Tampermonkey userscript that allows you to save curl commands, bind them to URL patterns, and execute them with your current page cookies. Perfect for API testing, debugging, and automation.
+**Request Repeater** is a browser extension (and Tampermonkey userscript) that allows you to save curl commands, bind them to URL patterns, and execute them with your current page cookies. Perfect for API testing, debugging, and automation.
 
 ---
 
 ## 🚀 Installation
+
+### Browser Extension (Recommended)
+
+#### Firefox
+1. Open Firefox, visit `about:debugging#/runtime/this-firefox`
+2. Click **"Load Temporary Add-on"**
+3. Select `extension/manifest.json` file
+4. Extension installed!
+
+#### Chrome
+1. Open Chrome, visit `chrome://extensions/`
+2. Enable **"Developer mode"**
+3. Click **"Load unpacked"**
+4. Select the `extension` folder
+
+### Tampermonkey Userscript (Alternative)
 
 1. **Install Tampermonkey**
    - Chrome: [Tampermonkey on Chrome Web Store](https://chrome.google.com/webstore/detail/tampermonkey/)
@@ -18,11 +34,6 @@
    - Click "+" (Create new script)
    - Copy and paste the entire `request-repeater.user.js` content
    - Save (Ctrl+S / Cmd+S)
-
-3. **Verify Installation**
-   - Visit any website
-   - Click the Tampermonkey icon in your browser toolbar
-   - You should see 4 menu items from Request Repeater
 
 ---
 
@@ -41,6 +52,11 @@
 - ✅ **Statistics tracking** - execution count, success rate, average response time
 - ✅ **Management page** - view all requests with detailed statistics
 - ✅ **Import/Export** - backup and share your request configurations
+- ✅ **Repeat execution** - run a request N times consecutively
+- ✅ **Scheduled execution** - auto-run requests at specified intervals (timer)
+- ✅ **Floating panel** - auto-shows when visiting pages with bound requests
+- ✅ **Draggable panel** - move the floating panel anywhere on screen
+- ✅ **HttpOnly Cookie access** (Extension only) - access all cookies including HttpOnly
 
 ---
 
@@ -48,7 +64,7 @@
 
 ### 1. Adding a New Request
 
-1. Click **Tampermonkey icon** → **➕ Add New Request**
+1. Click the **extension icon** (or Tampermonkey icon) → **➕ Add New Request**
 2. Fill in the form:
    - **Request Name**: e.g., "Get User Info"
    - **URL Pattern**: e.g., `https://example.com/users/*` (use `*` as wildcard)
@@ -67,33 +83,42 @@ Cookie Replace: sessionId, userId
 ### 2. Executing Requests
 
 1. Navigate to a page that matches your URL pattern
-2. Click **Tampermonkey icon** → **⚡ Execute Requests**
+2. The **floating panel** will auto-appear (or click extension icon)
 3. You'll see all requests bound to the current URL (sorted by last execution)
-4. Click **Execute** on any request
+4. Click **▶** to execute a request
 5. See the result notification (status code, response time)
+
+**Repeat Execution:**
+- Enter a number in the input field next to ▶
+- Click ▶ to run the request that many times
+
+**Scheduled Execution (Timer):**
+- Enter interval in seconds (5-3600)
+- Click ⏱ to start the timer
+- Click ⏹ to stop
 
 **Batch Execution:**
 - If multiple requests match, click **Execute All** at the bottom
 
 ### 3. Managing Requests
 
-Click **Tampermonkey icon** → **⚙️ Manage All Requests**
+Click **extension icon** → **⚙️ Manage**
 
 This opens a full-page management interface where you can:
 - View all saved requests
 - See detailed statistics
+- Edit or delete requests
+- Start/stop timers for any request
+- Select multiple requests for batch execution
 - Export configuration (backup as JSON)
 - Import configuration (restore from JSON)
 
 ### 4. Viewing Statistics
 
-Click **Tampermonkey icon** → **📊 View Statistics**
-
-See:
+The management page shows:
 - **Total Requests**: Number of saved requests
 - **Total Executions**: How many times you've run requests
 - **Success Rate**: Percentage of successful executions
-- **Top 5 Most Used**: Your most frequently executed requests
 
 ---
 
@@ -107,6 +132,8 @@ See:
 | `https://example.com/users/*` | All user pages |
 | `https://example.com/*` | All pages on domain |
 | `https://*.example.com/*` | All subdomains |
+
+**Note:** Query parameters are ignored during matching. Only the path is compared.
 
 ### Cookie Replacement
 
@@ -145,6 +172,9 @@ Batch execute multiple API calls with one click instead of manually running curl
 ### 4. Development Workflow
 Switch between test accounts quickly by executing saved requests with current cookies.
 
+### 5. Monitoring
+Use the timer feature to periodically check API endpoints or refresh data.
+
 ---
 
 ## 📝 Example Workflows
@@ -176,6 +206,20 @@ Switch between test accounts quickly by executing saved requests with current co
    - Go to dashboard
    - Click "Execute All"
    - Get 3 responses instantly
+
+### Workflow 3: Periodic Health Check
+
+1. **Setup:**
+   ```
+   Name: Health Check
+   Pattern: https://admin.example.com/*
+   Curl: curl 'https://api.example.com/health'
+   ```
+
+2. **Usage:**
+   - Set timer interval to 60 seconds
+   - Click ⏱ to start
+   - Request runs every minute automatically
 
 ---
 
@@ -216,9 +260,18 @@ Switch between test accounts quickly by executing saved requests with current co
 **Problem:** Request blocked by CORS policy
 
 **Solution:** 
-- `GM_xmlhttpRequest` bypasses CORS - this shouldn't happen
-- Check `// @connect *` is in script header
-- Verify `@grant GM_xmlhttpRequest` permission
+- Extension: Uses `host_permissions` to bypass CORS
+- Userscript: Uses `GM_xmlhttpRequest` to bypass CORS
+- Check permissions are correctly configured
+
+### Floating Panel Not Showing?
+
+**Problem:** Panel doesn't auto-appear on matching pages
+
+**Solution:**
+1. Check URL pattern matches current page
+2. Refresh the page
+3. Check browser console for errors
 
 ---
 
@@ -226,14 +279,14 @@ Switch between test accounts quickly by executing saved requests with current co
 
 ### Export Data
 
-1. Click **⚙️ Manage All Requests**
-2. Click **📥 Export All Data**
+1. Click **⚙️ Manage**
+2. Click **📥 Export**
 3. Save JSON file (includes all requests + config)
 
 ### Import Data
 
-1. Click **⚙️ Manage All Requests**
-2. Click **📤 Import Data**
+1. Click **⚙️ Manage**
+2. Click **📤 Import**
 3. Select your backup JSON file
 4. Data will be merged with existing requests
 
@@ -241,31 +294,34 @@ Switch between test accounts quickly by executing saved requests with current co
 
 ## 🔒 Privacy & Security
 
-- ✅ **All data stored locally** - uses `GM_setValue` (Tampermonkey storage)
+- ✅ **All data stored locally** - uses browser storage
 - ✅ **No external connections** - except your saved curl requests
-- ✅ **Cloud sync optional** - Tampermonkey can sync across browsers if enabled
+- ✅ **Cloud sync optional** - browser can sync across devices if enabled
 - ⚠️ **Sensitive data** - curl commands may contain auth tokens - keep backups secure
 
 ---
 
-## 🎨 Keyboard Shortcuts
+## 🎨 UI Features
 
-Currently, all actions are accessed via Tampermonkey menu (click icon).
+### Floating Panel
+- **Auto-show**: Appears when visiting pages with bound requests
+- **Draggable**: Click and drag the header to move
+- **Minimizable**: Click − to collapse, click again to expand
+- **Add button**: Quick access to add new requests
 
-Future version may add:
-- `Ctrl+Shift+R` - Quick execute
-- `Ctrl+Shift+A` - Add request
+### Popup (Extension)
+- **Quick execute**: Run requests directly from popup
+- **Repeat control**: Run N times with progress indicator
+- **Timer control**: Start/stop scheduled execution
+- **Edit on click**: Click request name to edit
 
 ---
 
 ## 🐛 Known Limitations
 
 1. **Single-file userscript** - all code in one file (Tampermonkey requirement)
-2. **No request chaining yet** - can't execute B after A succeeds
-3. **No scheduled execution** - can't auto-run every X minutes
-4. **Basic import** - import UI shows in console (manual GM_setValue needed)
-
-These may be added in future versions based on feedback!
+2. **No request chaining** - can't execute B after A succeeds (yet)
+3. **Timer stops on page navigation** - timers are per-page, not persistent
 
 ---
 
@@ -289,7 +345,20 @@ Free to use and modify. Built with ❤️ for developers who love automation.
 
 ## 🔄 Version History
 
-### v1.0.0 (2026-01-14)
+### v1.0.0 (Browser Extension)
+- Converted to browser extension (Manifest V3)
+- HttpOnly cookie access via `browser.cookies` API
+- Improved UI with popup and options page
+- All features from userscript preserved
+
+### v1.4.0 (Userscript)
+- Added repeat execution (run N times)
+- Added scheduled execution (timer)
+- Added floating panel with drag support
+- Added panel minimize feature
+- Improved batch execution UI
+
+### v1.0.0 (Userscript)
 - Initial release
 - Core features: Add/Execute/Manage requests
 - Cookie replacement with per-request config

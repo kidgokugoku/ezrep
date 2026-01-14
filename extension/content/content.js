@@ -85,8 +85,17 @@
 
     await I18n.init();
 
-    const activeTimers = {};
+    let activeTimers = {};
     let editingId = null;
+
+    activeTimers = await browserAPI.runtime.sendMessage({ type: 'TIMER_GET_ALL' });
+
+    browserAPI.runtime.onMessage.addListener((message) => {
+        if (message.type === 'TIMERS_UPDATED') {
+            activeTimers = message.timers;
+            refreshPanel();
+        }
+    });
 
     async function checkAndShowPanel() {
         const requests = await browserAPI.runtime.sendMessage({
@@ -135,7 +144,7 @@
                                             <button class="rr-btn-mini rr-btn-repeat" data-id="${req.id}">▶</button>
                                         </div>
                                         <div class="rr-timer-control">
-                                            <input type="number" class="rr-timer-interval" value="60" min="5" max="3600">
+                                            <input type="number" class="rr-timer-interval" value="${activeTimers[req.id]?.interval || 60}" min="5" max="3600">
                                             <button class="rr-btn-mini rr-btn-timer-toggle ${activeTimers[req.id] ? 'rr-timer-running' : ''}" data-id="${req.id}">
                                                 ${activeTimers[req.id] ? '⏹' : '⏱'}
                                             </button>
@@ -379,23 +388,13 @@
 
     async function handleTimerToggle(requestId, interval, btn) {
         if (activeTimers[requestId]) {
-            clearInterval(activeTimers[requestId]);
-            delete activeTimers[requestId];
-            btn.textContent = '⏱';
-            btn.classList.remove('rr-timer-running');
+            await browserAPI.runtime.sendMessage({ type: 'TIMER_STOP', requestId });
             showNotification(I18n.t('timerStopped'), 'info');
         } else {
             const requests = await browserAPI.runtime.sendMessage({ type: 'GET_ALL_REQUESTS' });
             const request = requests.find(r => r.id === requestId);
 
-            browserAPI.runtime.sendMessage({ type: 'EXECUTE_REQUEST', requestId });
-
-            activeTimers[requestId] = setInterval(() => {
-                browserAPI.runtime.sendMessage({ type: 'EXECUTE_REQUEST', requestId });
-            }, interval * 1000);
-
-            btn.textContent = '⏹';
-            btn.classList.add('rr-timer-running');
+            await browserAPI.runtime.sendMessage({ type: 'TIMER_START', requestId, interval });
             showNotification(I18n.t('timerRunning', { name: request?.name || I18n.t('unnamedRequest') }), 'success');
         }
     }

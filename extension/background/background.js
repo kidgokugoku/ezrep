@@ -26,6 +26,58 @@ function t(key) {
     return ErrorMessages[locale]?.[key] || ErrorMessages['en'][key] || key;
 }
 
+const activeTimers = {};
+
+const TimerManager = {
+    start(requestId, interval) {
+        this.stop(requestId);
+        
+        RequestExecutor.execute(requestId);
+        
+        activeTimers[requestId] = {
+            intervalId: setInterval(() => {
+                RequestExecutor.execute(requestId);
+            }, interval * 1000),
+            interval
+        };
+        
+        this._notifyAll();
+        return true;
+    },
+    
+    stop(requestId) {
+        if (activeTimers[requestId]) {
+            clearInterval(activeTimers[requestId].intervalId);
+            delete activeTimers[requestId];
+            this._notifyAll();
+            return true;
+        }
+        return false;
+    },
+    
+    isRunning(requestId) {
+        return !!activeTimers[requestId];
+    },
+    
+    getAll() {
+        const result = {};
+        for (const [id, timer] of Object.entries(activeTimers)) {
+            result[id] = { interval: timer.interval };
+        }
+        return result;
+    },
+    
+    _notifyAll() {
+        const timers = this.getAll();
+        browser.runtime.sendMessage({ type: 'TIMERS_UPDATED', timers }).catch(() => {});
+        browser.tabs.query({}).then(tabs => {
+            tabs.forEach(tab => {
+                browser.tabs.sendMessage(tab.id, { type: 'TIMERS_UPDATED', timers }).catch(() => {});
+            });
+        });
+    }
+};
+
 const RequestExecutor = {
     async execute(requestId) {
         const request = await StorageAdapter.getRequest(requestId);
@@ -204,6 +256,23 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
+    if (message.type === 'TIMER_START') {
+        const success = TimerManager.start(message.requestId, message.interval);
+        sendResponse({ success });
+        return false;
+    }
+
+    if (message.type === 'TIMER_STOP') {
+        const success = TimerManager.stop(message.requestId);
+        sendResponse({ success });
+        return false;
+    }
+
+    if (message.type === 'TIMER_GET_ALL') {
+        sendResponse(TimerManager.getAll());
+        return false;
+    }
+
     if (message.type === 'GET_REQUESTS_FOR_URL') {
         (async () => {
             const allRequests = await StorageAdapter.getAllRequests();
@@ -264,6 +333,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message.type === 'DELETE_REQUEST') {
+        TimerManager.stop(message.id);
         StorageAdapter.deleteRequest(message.id).then(success => {
             sendResponse({ success, error: success ? null : t('failedToDelete') });
         });

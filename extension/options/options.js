@@ -1,14 +1,24 @@
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 
 let editingId = null;
-const activeTimers = {};
+let activeTimers = {};
 
 document.addEventListener('DOMContentLoaded', async () => {
     await I18n.init();
     applyTranslations();
+    
+    activeTimers = await browserAPI.runtime.sendMessage({ type: 'TIMER_GET_ALL' });
+    
     loadStats();
     loadRequests();
     setupEventListeners();
+});
+
+browserAPI.runtime.onMessage.addListener((message) => {
+    if (message.type === 'TIMERS_UPDATED') {
+        activeTimers = message.timers;
+        loadRequests();
+    }
 });
 
 function applyTranslations() {
@@ -65,7 +75,7 @@ async function loadRequests() {
             </div>
             <div class="request-timer">
                 <div class="timer-input-group">
-                    <input type="number" class="timer-input" value="${req.timerInterval || 60}" min="5" max="3600">
+                    <input type="number" class="timer-input" value="${activeTimers[req.id]?.interval || 60}" min="5" max="3600">
                     <span class="timer-unit">s</span>
                 </div>
                 <button class="btn btn-secondary btn-timer ${activeTimers[req.id] ? 'active' : ''}" data-id="${req.id}">
@@ -228,23 +238,13 @@ async function executeRequest(id, btn) {
 
 async function handleTimerToggle(requestId, interval, btn) {
     if (activeTimers[requestId]) {
-        clearInterval(activeTimers[requestId]);
-        delete activeTimers[requestId];
-        btn.textContent = I18n.t('timerStart');
-        btn.classList.remove('active');
+        await browserAPI.runtime.sendMessage({ type: 'TIMER_STOP', requestId });
         showNotification(I18n.t('timerStopped'), 'info');
     } else {
         const requests = await browserAPI.runtime.sendMessage({ type: 'GET_ALL_REQUESTS' });
         const request = requests.find(r => r.id === requestId);
 
-        browserAPI.runtime.sendMessage({ type: 'EXECUTE_REQUEST', requestId });
-
-        activeTimers[requestId] = setInterval(() => {
-            browserAPI.runtime.sendMessage({ type: 'EXECUTE_REQUEST', requestId });
-        }, interval * 1000);
-
-        btn.textContent = I18n.t('timerStop');
-        btn.classList.add('active');
+        await browserAPI.runtime.sendMessage({ type: 'TIMER_START', requestId, interval });
         showNotification(I18n.t('timerRunning', { name: request?.name || I18n.t('unnamedRequest') }), 'success');
     }
 }

@@ -2,38 +2,23 @@
 
 ## 📖 Overview
 
-**Request Repeater** is a browser extension (and Tampermonkey userscript) that allows you to save curl commands, bind them to URL patterns, and execute them with your current page cookies. Perfect for API testing, debugging, and automation.
+**Request Repeater** is a browser extension that allows you to save curl commands, bind them to URL patterns, and execute them with your current page cookies. Perfect for API testing, debugging, and automation.
 
 ---
 
 ## 🚀 Installation
 
-### Browser Extension (Recommended)
-
-#### Firefox
+### Firefox
 1. Open Firefox, visit `about:debugging#/runtime/this-firefox`
 2. Click **"Load Temporary Add-on"**
 3. Select `extension/manifest.json` file
 4. Extension installed!
 
-#### Chrome
+### Chrome
 1. Open Chrome, visit `chrome://extensions/`
 2. Enable **"Developer mode"**
 3. Click **"Load unpacked"**
 4. Select the `extension` folder
-
-### Tampermonkey Userscript (Alternative)
-
-1. **Install Tampermonkey**
-   - Chrome: [Tampermonkey on Chrome Web Store](https://chrome.google.com/webstore/detail/tampermonkey/)
-   - Firefox: [Tampermonkey on Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/tampermonkey/)
-   - Edge: [Tampermonkey on Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/tampermonkey/)
-
-2. **Install Request Repeater**
-   - Open Tampermonkey Dashboard
-   - Click "+" (Create new script)
-   - Copy and paste the entire `request-repeater.user.js` content
-   - Save (Ctrl+S / Cmd+S)
 
 ---
 
@@ -56,7 +41,7 @@
 - ✅ **Scheduled execution** - auto-run requests at specified intervals (timer)
 - ✅ **Floating panel** - auto-shows when visiting pages with bound requests
 - ✅ **Draggable panel** - move the floating panel anywhere on screen
-- ✅ **HttpOnly Cookie access** (Extension only) - access all cookies including HttpOnly
+- ✅ **HttpOnly Cookie access** - access all cookies including HttpOnly
 
 ---
 
@@ -64,7 +49,7 @@
 
 ### 1. Adding a New Request
 
-1. Click the **extension icon** (or Tampermonkey icon) → **➕ Add New Request**
+1. Click the **extension icon** → **➕ Add New Request**
 2. Fill in the form:
    - **Request Name**: e.g., "Get User Info"
    - **URL Pattern**: e.g., `https://example.com/users/*` (use `*` as wildcard)
@@ -259,10 +244,7 @@ Use the timer feature to periodically check API endpoints or refresh data.
 
 **Problem:** Request blocked by CORS policy
 
-**Solution:** 
-- Extension: Uses `host_permissions` to bypass CORS
-- Userscript: Uses `GM_xmlhttpRequest` to bypass CORS
-- Check permissions are correctly configured
+**Solution:** The extension uses `host_permissions` to bypass CORS. Check permissions are correctly configured.
 
 ### Floating Panel Not Showing?
 
@@ -309,7 +291,7 @@ Use the timer feature to periodically check API endpoints or refresh data.
 - **Minimizable**: Click − to collapse, click again to expand
 - **Add button**: Quick access to add new requests
 
-### Popup (Extension)
+### Popup
 - **Quick execute**: Run requests directly from popup
 - **Repeat control**: Run N times with progress indicator
 - **Timer control**: Start/stop scheduled execution
@@ -319,9 +301,8 @@ Use the timer feature to periodically check API endpoints or refresh data.
 
 ## 🐛 Known Limitations
 
-1. **Single-file userscript** - all code in one file (Tampermonkey requirement)
-2. **No request chaining** - can't execute B after A succeeds (yet)
-3. **Timer stops on page navigation** - timers are per-page, not persistent
+1. **No request chaining** - can't execute B after A succeeds (yet)
+2. **Timer stops on page navigation** - timers are per-page, not persistent
 
 ---
 
@@ -345,25 +326,9 @@ Free to use and modify. Built with ❤️ for developers who love automation.
 
 ## 🔄 Version History
 
-### v1.0.0 (Browser Extension)
-- Converted to browser extension (Manifest V3)
+### v1.0.0
+- Browser extension (Manifest V3)
 - HttpOnly cookie access via `browser.cookies` API
-- Improved UI with popup and options page
-- All features from userscript preserved
-
-### v1.4.0 (Userscript)
-- Added repeat execution (run N times)
-- Added scheduled execution (timer)
-- Added floating panel with drag support
-- Added panel minimize feature
-- Improved batch execution UI
-
-### v1.0.0 (Userscript)
-- Initial release
-- Core features: Add/Execute/Manage requests
-- Cookie replacement with per-request config
-- Path matching with wildcards
-- Batch execution
-- Statistics tracking
-- Import/Export functionality
-- Management page with full UI
+- Popup with repeat/timer controls
+- Floating panel with drag support
+- Full management page

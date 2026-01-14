@@ -3,7 +3,9 @@ const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 const StorageAdapter = {
     KEYS: {
         REQUESTS: 'req_repeater_requests',
-        CONFIG: 'req_repeater_config'
+        CONFIG: 'req_repeater_config',
+        GROUPS: 'req_repeater_groups',
+        TIMERS: 'req_repeater_timers'
     },
 
     async getAllRequests() {
@@ -36,6 +38,8 @@ const StorageAdapter = {
             id: this._generateUUID(),
             createdAt: Date.now(),
             lastExecuted: null,
+            groupId: request.groupId || null,
+            chainNextId: request.chainNextId || null,
             statistics: {
                 executionCount: 0,
                 successCount: 0,
@@ -75,14 +79,16 @@ const StorageAdapter = {
             return {
                 defaultCookieReplace: config.defaultCookieReplace || [],
                 notificationDuration: config.notificationDuration || 5000,
-                enableBatchExecution: config.enableBatchExecution !== false
+                enableBatchExecution: config.enableBatchExecution !== false,
+                theme: config.theme || 'auto'
             };
         } catch (e) {
             console.error('[StorageAdapter] Failed to parse config:', e);
             return {
                 defaultCookieReplace: [],
                 notificationDuration: 5000,
-                enableBatchExecution: true
+                enableBatchExecution: true,
+                theme: 'auto'
             };
         }
     },
@@ -116,9 +122,93 @@ const StorageAdapter = {
             if (data.config) {
                 await this.saveConfig(data.config);
             }
+            if (data.groups) {
+                await this.saveAllGroups(data.groups);
+            }
             return true;
         } catch (e) {
             console.error('[StorageAdapter] Failed to import data:', e);
+            return false;
+        }
+    },
+
+    // ==================== Groups API ====================
+    async getAllGroups() {
+        const result = await browserAPI.storage.local.get(this.KEYS.GROUPS);
+        const data = result[this.KEYS.GROUPS] || '[]';
+        try {
+            return JSON.parse(data);
+        } catch (e) {
+            console.error('[StorageAdapter] Failed to parse groups:', e);
+            return [];
+        }
+    },
+
+    async saveAllGroups(groups) {
+        try {
+            await browserAPI.storage.local.set({ 
+                [this.KEYS.GROUPS]: JSON.stringify(groups) 
+            });
+            return true;
+        } catch (e) {
+            console.error('[StorageAdapter] Failed to save groups:', e);
+            return false;
+        }
+    },
+
+    async addGroup(group) {
+        const groups = await this.getAllGroups();
+        const newGroup = {
+            id: this._generateUUID(),
+            name: group.name,
+            color: group.color || '#3b82f6',
+            createdAt: Date.now()
+        };
+        groups.push(newGroup);
+        await this.saveAllGroups(groups);
+        return newGroup;
+    },
+
+    async updateGroup(id, updates) {
+        const groups = await this.getAllGroups();
+        const index = groups.findIndex(g => g.id === id);
+        if (index === -1) return false;
+        groups[index] = { ...groups[index], ...updates };
+        return this.saveAllGroups(groups);
+    },
+
+    async deleteGroup(id) {
+        const groups = await this.getAllGroups();
+        const filtered = groups.filter(g => g.id !== id);
+        // Also remove groupId from requests
+        const requests = await this.getAllRequests();
+        const updatedRequests = requests.map(r => 
+            r.groupId === id ? { ...r, groupId: null } : r
+        );
+        await this.saveAllRequests(updatedRequests);
+        return this.saveAllGroups(filtered);
+    },
+
+    // ==================== Timers Persistence ====================
+    async getTimers() {
+        const result = await browserAPI.storage.local.get(this.KEYS.TIMERS);
+        const data = result[this.KEYS.TIMERS] || '{}';
+        try {
+            return JSON.parse(data);
+        } catch (e) {
+            console.error('[StorageAdapter] Failed to parse timers:', e);
+            return {};
+        }
+    },
+
+    async saveTimers(timers) {
+        try {
+            await browserAPI.storage.local.set({ 
+                [this.KEYS.TIMERS]: JSON.stringify(timers) 
+            });
+            return true;
+        } catch (e) {
+            console.error('[StorageAdapter] Failed to save timers:', e);
             return false;
         }
     },

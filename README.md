@@ -42,6 +42,10 @@
 - ✅ **Floating panel** - auto-shows when visiting pages with bound requests
 - ✅ **Draggable panel** - move the floating panel anywhere on screen
 - ✅ **HttpOnly Cookie access** - access all cookies including HttpOnly
+- ✅ **Request chaining** - execute request B automatically after A succeeds
+- ✅ **Persistent timers** - timers survive browser restart
+- ✅ **Request groups** - organize requests into folders with colors
+- ✅ **Dark mode** - Light/Dark/Auto theme support
 
 ---
 
@@ -301,8 +305,7 @@ Use the timer feature to periodically check API endpoints or refresh data.
 
 ## 🐛 Known Limitations
 
-1. **No request chaining** - can't execute B after A succeeds (yet)
-2. **Timer stops on page navigation** - timers are per-page, not persistent
+1. **Timer stops on page navigation** - timers are per-page, not persistent *(Fixed in v1.1.0)*
 
 ---
 
@@ -325,6 +328,12 @@ Free to use and modify. Built with ❤️ for developers who love automation.
 ---
 
 ## 🔄 Version History
+
+### v1.1.0
+- **Request Chaining** - Execute request B automatically after A succeeds
+- **Persistent Timers** - Timers survive browser restart
+- **Request Groups** - Organize requests into folders with colors
+- **Dark Mode** - Light/Dark/Auto theme support
 
 ### v1.0.0
 - Browser extension (Manifest V3)

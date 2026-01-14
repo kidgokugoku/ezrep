@@ -3,6 +3,8 @@
 
     const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 
+    let isDarkMode = false;
+
     const I18n = {
         locale: 'en',
         translations: {
@@ -18,6 +20,8 @@
                 notifUpdated: 'Request updated',
                 notifDeleted: 'Request deleted',
                 repeatComplete: 'Completed {success}/{total}',
+                singleRequestSuccess: '{status} · {time}ms',
+                singleRequestError: 'Error: {error}',
                 timerRunning: 'Timer running: {name}',
                 timerStopped: 'Timer stopped',
                 timeJustNow: 'Just now',
@@ -48,6 +52,8 @@
                 notifUpdated: '请求已更新',
                 notifDeleted: '请求已删除',
                 repeatComplete: '完成 {success}/{total}',
+                singleRequestSuccess: '{status} · {time}ms',
+                singleRequestError: '错误: {error}',
                 timerRunning: '定时运行中：{name}',
                 timerStopped: '定时已停止',
                 timeJustNow: '刚刚',
@@ -84,6 +90,22 @@
     };
 
     await I18n.init();
+    
+    async function initTheme() {
+        try {
+            const config = await browserAPI.runtime.sendMessage({ type: 'GET_CONFIG' });
+            const theme = config.theme || 'auto';
+            if (theme === 'auto') {
+                isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            } else {
+                isDarkMode = theme === 'dark';
+            }
+        } catch (e) {
+            isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
+    }
+    
+    await initTheme();
 
     let activeTimers = {};
     let editingId = null;
@@ -112,7 +134,7 @@
         closeFloatingPanel();
 
         const panel = document.createElement('div');
-        panel.className = 'rr-floating-panel';
+        panel.className = 'rr-floating-panel' + (isDarkMode ? ' rr-dark' : '');
         panel.innerHTML = `
             <div class="rr-floating-header">
                 <span class="rr-floating-title">⚡ ${I18n.t('dialogExecuteTitle')}</span>
@@ -162,7 +184,7 @@
         document.body.appendChild(panel);
         makeDraggable(panel);
 
-        panel.querySelector('.rr-floating-close').addEventListener('click', closeFloatingPanel);
+        panel.querySelector('.rr-floating-close').addEventListener('click', collapsePanel);
         panel.querySelector('.rr-floating-minimize').addEventListener('click', () => {
             panel.classList.toggle('rr-floating-minimized');
         });
@@ -197,6 +219,27 @@
 
     function closeFloatingPanel() {
         document.querySelectorAll('.rr-floating-panel').forEach(el => el.remove());
+        document.querySelectorAll('.rr-collapsed-btn').forEach(el => el.remove());
+    }
+
+    function collapsePanel() {
+        closeFloatingPanel();
+        
+        const btn = document.createElement('div');
+        btn.className = 'rr-collapsed-btn';
+        btn.innerHTML = '⚡';
+        btn.title = I18n.t('dialogExecuteTitle');
+        document.body.appendChild(btn);
+        
+        btn.addEventListener('click', async () => {
+            btn.remove();
+            const requests = await browserAPI.runtime.sendMessage({
+                type: 'GET_REQUESTS_FOR_URL',
+                url: window.location.href
+            });
+            // Always show panel, even if empty (user can add new requests)
+            showFloatingPanel(requests || []);
+        });
     }
 
     async function showModal(requestId = null) {
@@ -216,7 +259,7 @@
         const overlay = document.createElement('div');
         overlay.className = 'rr-modal-overlay';
         overlay.innerHTML = `
-            <div class="rr-modal">
+            <div class="rr-modal${isDarkMode ? ' rr-dark' : ''}">
                 <div class="rr-modal-header">
                     <h3>${isEdit ? I18n.t('dialogEditTitle') : I18n.t('dialogAddTitle')}</h3>
                     <button class="rr-modal-close">×</button>
@@ -364,12 +407,14 @@
         btn.disabled = true;
 
         let successCount = 0;
+        let lastResult = null;
         for (let i = 0; i < times; i++) {
             btn.textContent = `${i + 1}/${times}`;
             const result = await browserAPI.runtime.sendMessage({
                 type: 'EXECUTE_REQUEST',
                 requestId
             });
+            lastResult = result;
             if (result.success) successCount++;
 
             if (i < times - 1) {
@@ -380,10 +425,24 @@
         btn.disabled = false;
         btn.textContent = originalText;
 
-        showNotification(
-            I18n.t('repeatComplete', { success: successCount, total: times }),
-            successCount === times ? 'success' : 'error'
-        );
+        if (times === 1 && lastResult) {
+            if (lastResult.success) {
+                showNotification(
+                    I18n.t('singleRequestSuccess', { status: lastResult.statusCode, time: lastResult.responseTime }),
+                    lastResult.statusCode >= 200 && lastResult.statusCode < 300 ? 'success' : 'error'
+                );
+            } else {
+                showNotification(
+                    I18n.t('singleRequestError', { error: lastResult.error }),
+                    'error'
+                );
+            }
+        } else {
+            showNotification(
+                I18n.t('repeatComplete', { success: successCount, total: times }),
+                successCount === times ? 'success' : 'error'
+            );
+        }
     }
 
     async function handleTimerToggle(requestId, interval, btn) {

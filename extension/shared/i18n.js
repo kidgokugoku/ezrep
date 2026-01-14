@@ -107,7 +107,24 @@ const I18n = {
             notifImportFailed: 'Import failed',
             notifDeleteFailed: 'Delete failed',
             notifInvalidJson: 'Invalid JSON file',
-            unnamedRequest: 'Unnamed Request'
+            unnamedRequest: 'Unnamed Request',
+
+            groupAll: 'All Requests',
+            groupUngrouped: 'Ungrouped',
+            groupNew: 'New Group',
+            groupName: 'Group Name',
+            groupColor: 'Color',
+            groupDelete: 'Delete Group',
+            groupConfirmDelete: 'Delete this group? Requests will be moved to Ungrouped.',
+            labelGroup: 'Group',
+            labelChainNext: 'Chain Next Request',
+            chainNone: 'None (no chain)',
+            chainExecuted: 'Chain executed: {name}',
+
+            themeLight: 'Light',
+            themeDark: 'Dark',
+            themeAuto: 'Auto (System)',
+            settingsTheme: 'Theme'
         },
         'zh': {
             menuExecute: '⚡ 执行请求',
@@ -214,7 +231,24 @@ const I18n = {
             notifImportFailed: '导入失败',
             notifDeleteFailed: '删除失败',
             notifInvalidJson: '无效的 JSON 文件',
-            unnamedRequest: '未命名请求'
+            unnamedRequest: '未命名请求',
+
+            groupAll: '所有请求',
+            groupUngrouped: '未分组',
+            groupNew: '新建分组',
+            groupName: '分组名称',
+            groupColor: '颜色',
+            groupDelete: '删除分组',
+            groupConfirmDelete: '删除此分组？请求将移至未分组。',
+            labelGroup: '分组',
+            labelChainNext: '链式执行下一个',
+            chainNone: '无（不链式执行）',
+            chainExecuted: '链式执行：{name}',
+
+            themeLight: '浅色',
+            themeDark: '深色',
+            themeAuto: '自动（跟随系统）',
+            settingsTheme: '主题'
         },
         'zh-CN': 'zh',
         'zh-TW': 'zh',

@@ -29,10 +29,23 @@ function t(key) {
 const activeTimers = {};
 
 const TimerManager = {
-    start(requestId, interval) {
-        this.stop(requestId);
+    async init() {
+        const savedTimers = await StorageAdapter.getTimers();
+        for (const [requestId, timerData] of Object.entries(savedTimers)) {
+            const request = await StorageAdapter.getRequest(requestId);
+            if (request) {
+                this.start(requestId, timerData.interval, true);
+            }
+        }
+        console.log('[TimerManager] Restored timers:', Object.keys(savedTimers).length);
+    },
+
+    start(requestId, interval, isRestore = false) {
+        this.stop(requestId, true);
         
-        RequestExecutor.execute(requestId);
+        if (!isRestore) {
+            RequestExecutor.execute(requestId);
+        }
         
         activeTimers[requestId] = {
             intervalId: setInterval(() => {
@@ -41,14 +54,18 @@ const TimerManager = {
             interval
         };
         
+        this._persistTimers();
         this._notifyAll();
         return true;
     },
     
-    stop(requestId) {
+    stop(requestId, skipPersist = false) {
         if (activeTimers[requestId]) {
             clearInterval(activeTimers[requestId].intervalId);
             delete activeTimers[requestId];
+            if (!skipPersist) {
+                this._persistTimers();
+            }
             this._notifyAll();
             return true;
         }
@@ -66,6 +83,14 @@ const TimerManager = {
         }
         return result;
     },
+
+    async _persistTimers() {
+        const timersToSave = {};
+        for (const [id, timer] of Object.entries(activeTimers)) {
+            timersToSave[id] = { interval: timer.interval };
+        }
+        await StorageAdapter.saveTimers(timersToSave);
+    },
     
     _notifyAll() {
         const timers = this.getAll();
@@ -79,7 +104,13 @@ const TimerManager = {
 };
 
 const RequestExecutor = {
-    async execute(requestId) {
+    async execute(requestId, chainDepth = 0) {
+        const MAX_CHAIN_DEPTH = 10;
+        if (chainDepth > MAX_CHAIN_DEPTH) {
+            console.warn('[RequestExecutor] Chain depth exceeded limit:', MAX_CHAIN_DEPTH);
+            return { success: false, error: 'Chain depth exceeded limit' };
+        }
+
         const request = await StorageAdapter.getRequest(requestId);
         if (!request) {
             return {
@@ -111,7 +142,7 @@ const RequestExecutor = {
 
             await this._updateStatistics(requestId, success, responseTime);
 
-            return {
+            const result = {
                 success: true,
                 statusCode: response.status,
                 statusText: response.statusText,
@@ -119,6 +150,14 @@ const RequestExecutor = {
                 responseBody: response.body,
                 headers: response.headers
             };
+
+            if (success && request.chainNextId) {
+                console.log('[RequestExecutor] Executing chain next:', request.chainNextId);
+                const chainResult = await this.execute(request.chainNextId, chainDepth + 1);
+                result.chainResult = chainResult;
+            }
+
+            return result;
 
         } catch (error) {
             const responseTime = Date.now() - startTime;
@@ -371,6 +410,46 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
         return true;
     }
+
+    if (message.type === 'GET_ALL_GROUPS') {
+        StorageAdapter.getAllGroups().then(sendResponse);
+        return true;
+    }
+
+    if (message.type === 'CREATE_GROUP') {
+        StorageAdapter.addGroup(message.data).then(group => {
+            sendResponse({ success: true, group });
+        });
+        return true;
+    }
+
+    if (message.type === 'UPDATE_GROUP') {
+        StorageAdapter.updateGroup(message.id, message.data).then(success => {
+            sendResponse({ success });
+        });
+        return true;
+    }
+
+    if (message.type === 'DELETE_GROUP') {
+        StorageAdapter.deleteGroup(message.id).then(success => {
+            sendResponse({ success });
+        });
+        return true;
+    }
+
+    if (message.type === 'GET_CONFIG') {
+        StorageAdapter.getConfig().then(sendResponse);
+        return true;
+    }
+
+    if (message.type === 'SAVE_CONFIG') {
+        StorageAdapter.saveConfig(message.data).then(success => {
+            sendResponse({ success });
+        });
+        return true;
+    }
 });
+
+TimerManager.init();
 
 console.log('[RequestRepeater] Background script initialized');

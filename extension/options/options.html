@@ -11,6 +11,11 @@
     <header class="header">
       <h1>⚡ Request Repeater</h1>
       <div class="header-actions">
+        <select class="theme-select" id="themeSelect">
+          <option value="auto">🌗 Auto</option>
+          <option value="light">☀️ Light</option>
+          <option value="dark">🌙 Dark</option>
+        </select>
         <button class="btn btn-primary" id="exportBtn">📥 <span id="exportBtnText">Export</span></button>
         <button class="btn btn-secondary" id="importBtn">📤 <span id="importBtnText">Import</span></button>
         <input type="file" id="importFile" accept=".json" style="display:none">
@@ -32,20 +37,43 @@
       </div>
     </div>
 
-    <div class="section">
-      <div class="section-header">
-        <h2 id="sectionTitle">All Requests</h2>
-        <div class="batch-actions">
-          <label class="select-all-label">
-            <input type="checkbox" id="selectAll">
-            <span id="labelSelectAll">Select All</span>
-          </label>
-          <button class="btn btn-primary" id="batchExecBtn" disabled>Execute Selected (0)</button>
+    <div class="main-layout">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <h3 id="labelGroups">Groups</h3>
+          <button class="btn-icon" id="addGroupBtn" title="Add Group">+</button>
         </div>
-      </div>
+        <div class="group-list" id="groupList">
+          <div class="group-item active" data-group="all">
+            <span class="group-icon">📁</span>
+            <span class="group-name" id="groupAllLabel">All Requests</span>
+            <span class="group-count" id="groupAllCount">0</span>
+          </div>
+          <div class="group-item" data-group="ungrouped">
+            <span class="group-icon">📄</span>
+            <span class="group-name" id="groupUngroupedLabel">Ungrouped</span>
+            <span class="group-count" id="groupUngroupedCount">0</span>
+          </div>
+        </div>
+      </aside>
 
-      <div class="request-table" id="requestTable">
-        <div class="empty-state" id="emptyState">No requests yet. Add one from the popup.</div>
+      <div class="main-content">
+        <div class="section">
+          <div class="section-header">
+            <h2 id="sectionTitle">All Requests</h2>
+            <div class="batch-actions">
+              <label class="select-all-label">
+                <input type="checkbox" id="selectAll">
+                <span id="labelSelectAll">Select All</span>
+              </label>
+              <button class="btn btn-primary" id="batchExecBtn" disabled>Execute Selected (0)</button>
+            </div>
+          </div>
+
+          <div class="request-table" id="requestTable">
+            <div class="empty-state" id="emptyState">No requests yet. Add one from the popup.</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -57,9 +85,15 @@
         <button class="close-btn" id="closeDialog">&times;</button>
       </div>
       <form id="editForm">
-        <div class="form-group">
-          <label id="labelEditName">Request Name *</label>
-          <input type="text" id="editName" required>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label id="labelEditName">Request Name *</label>
+            <input type="text" id="editName" required>
+          </div>
+          <div class="form-group">
+            <label id="labelEditGroup">Group</label>
+            <select id="editGroup"></select>
+          </div>
         </div>
         <div class="form-group">
           <label id="labelEditPattern">URL Pattern *</label>
@@ -69,16 +103,54 @@
           <label id="labelEditCurl">cURL Command *</label>
           <textarea id="editCurl" rows="10" required></textarea>
         </div>
-        <div class="form-group">
-          <label id="labelEditCookie">Cookie Replace List</label>
-          <input type="text" id="editCookie">
-          <small id="hintEditCookie">Comma-separated. Leave empty to use all page cookies.</small>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label id="labelEditCookie">Cookie Replace List</label>
+            <input type="text" id="editCookie">
+            <small id="hintEditCookie">Comma-separated. Leave empty to use all page cookies.</small>
+          </div>
+          <div class="form-group">
+            <label id="labelEditChain">Chain Next</label>
+            <select id="editChain"></select>
+          </div>
         </div>
         <div class="form-actions">
           <button type="button" class="btn btn-danger" id="deleteBtn">Delete</button>
           <div style="flex:1"></div>
           <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
           <button type="submit" class="btn btn-primary" id="saveBtn">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="dialog-overlay" id="groupDialog" style="display: none;">
+    <div class="dialog">
+      <div class="dialog-header">
+        <h2 id="groupDialogTitle">New Group</h2>
+        <button class="close-btn" id="closeGroupDialog">&times;</button>
+      </div>
+      <form id="groupForm">
+        <div class="form-group">
+          <label id="labelGroupName">Group Name *</label>
+          <input type="text" id="groupName" required>
+        </div>
+        <div class="form-group">
+          <label id="labelGroupColor">Color</label>
+          <div class="color-picker" id="colorPicker">
+            <button type="button" class="color-btn active" data-color="#3b82f6" style="background:#3b82f6"></button>
+            <button type="button" class="color-btn" data-color="#10b981" style="background:#10b981"></button>
+            <button type="button" class="color-btn" data-color="#f59e0b" style="background:#f59e0b"></button>
+            <button type="button" class="color-btn" data-color="#ef4444" style="background:#ef4444"></button>
+            <button type="button" class="color-btn" data-color="#8b5cf6" style="background:#8b5cf6"></button>
+            <button type="button" class="color-btn" data-color="#ec4899" style="background:#ec4899"></button>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-danger" id="deleteGroupBtn" style="display:none">Delete Group</button>
+          <div style="flex:1"></div>
+          <button type="button" class="btn btn-secondary" id="cancelGroupBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveGroupBtn">Save</button>
         </div>
       </form>
     </div>

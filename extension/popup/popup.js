@@ -6,6 +6,7 @@ let activeTimers = {};
 
 document.addEventListener('DOMContentLoaded', async () => {
     await I18n.init();
+    await initTheme();
     applyTranslations();
     
     const [tab] = await browserAPI.tabs.query({ active: true, currentWindow: true });
@@ -19,6 +20,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadRequests();
     setupEventListeners();
 });
+
+async function initTheme() {
+    const config = await browserAPI.runtime.sendMessage({ type: 'GET_CONFIG' });
+    const theme = config.theme || 'auto';
+    applyTheme(theme);
+}
+
+function applyTheme(theme) {
+    if (theme === 'auto') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+    } else {
+        document.documentElement.setAttribute('data-theme', theme);
+    }
+}
 
 browserAPI.runtime.onMessage.addListener((message) => {
     if (message.type === 'TIMERS_UPDATED') {

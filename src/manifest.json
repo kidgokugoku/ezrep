@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Request Repeater",
+  "name": "ezrep",
   "version": "1.1.0",
-  "description": "Save curl commands, bind to URL patterns, execute with current page cookies. Features: request chaining, persistent timers, groups, dark mode.",
+  "description": "Save curl commands, bind to URLs, replay with current cookies.",
   "browser_specific_settings": {
     "gecko": {
       "id": "{e8a7e5c0-1234-4567-89ab-cdef01234567}",
@@ -31,7 +31,7 @@
       "16": "icons/icon16.png",
       "48": "icons/icon48.png"
     },
-    "default_title": "Request Repeater"
+    "default_title": "ezrep"
   },
   "content_scripts": [
     {

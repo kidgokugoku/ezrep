@@ -3,9 +3,9 @@ set -e
 
 VERSION=$(grep '"version"' src/manifest.json | sed 's/.*: "\(.*\)".*/\1/')
 OUTPUT_DIR="dist"
-OUTPUT_FILE="$OUTPUT_DIR/request-repeater-v$VERSION.xpi"
+OUTPUT_FILE="$OUTPUT_DIR/ezrep-v$VERSION.xpi"
 
-echo "Building Request Repeater v$VERSION..."
+echo "Building ezrep v$VERSION..."
 
 mkdir -p "$OUTPUT_DIR"
 rm -f "$OUTPUT_FILE"

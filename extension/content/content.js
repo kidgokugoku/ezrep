@@ -8,10 +8,15 @@
         translations: {
             'en': {
                 dialogExecuteTitle: 'Execute Requests',
+                dialogAddTitle: 'Add New Request',
+                dialogEditTitle: 'Edit Request',
                 menuAdd: '➕ Add New Request',
                 notifNoRequests: 'No requests bound to this URL',
                 notifExecuting: 'Executing request...',
                 notifError: 'Error',
+                notifAdded: 'Request added',
+                notifUpdated: 'Request updated',
+                notifDeleted: 'Request deleted',
                 repeatComplete: 'Completed {success}/{total}',
                 timerRunning: 'Timer running: {name}',
                 timerStopped: 'Timer stopped',
@@ -19,14 +24,29 @@
                 timeMinutesAgo: '{n}m ago',
                 timeHoursAgo: '{n}h ago',
                 timeDaysAgo: '{n}d ago',
-                unnamedRequest: 'Request'
+                unnamedRequest: 'Request',
+                labelName: 'Request Name',
+                labelUrlPattern: 'URL Pattern',
+                labelCurl: 'cURL Command',
+                labelCookieReplace: 'Cookie Replace List',
+                hintCookie: 'Comma-separated. Leave empty to use all page cookies.',
+                btnAdd: 'Add',
+                btnUpdate: 'Update',
+                btnCancel: 'Cancel',
+                btnDelete: 'Delete',
+                confirmDelete: 'Delete this request?'
             },
             'zh': {
                 dialogExecuteTitle: '执行请求',
+                dialogAddTitle: '添加新请求',
+                dialogEditTitle: '编辑请求',
                 menuAdd: '➕ 添加新请求',
                 notifNoRequests: '当前 URL 没有绑定的请求',
                 notifExecuting: '正在执行请求...',
                 notifError: '错误',
+                notifAdded: '请求已添加',
+                notifUpdated: '请求已更新',
+                notifDeleted: '请求已删除',
                 repeatComplete: '完成 {success}/{total}',
                 timerRunning: '定时运行中：{name}',
                 timerStopped: '定时已停止',
@@ -34,7 +54,17 @@
                 timeMinutesAgo: '{n}分钟前',
                 timeHoursAgo: '{n}小时前',
                 timeDaysAgo: '{n}天前',
-                unnamedRequest: '请求'
+                unnamedRequest: '请求',
+                labelName: '请求名称',
+                labelUrlPattern: 'URL 模式',
+                labelCurl: 'cURL 命令',
+                labelCookieReplace: 'Cookie 替换列表',
+                hintCookie: '逗号分隔。留空则使用所有页面 cookie。',
+                btnAdd: '添加',
+                btnUpdate: '更新',
+                btnCancel: '取消',
+                btnDelete: '删除',
+                confirmDelete: '删除此请求？'
             }
         },
         async init() {
@@ -56,6 +86,7 @@
     await I18n.init();
 
     const activeTimers = {};
+    let editingId = null;
 
     async function checkAndShowPanel() {
         const requests = await browserAPI.runtime.sendMessage({
@@ -127,7 +158,7 @@
             panel.classList.toggle('rr-floating-minimized');
         });
         panel.querySelector('.rr-floating-add').addEventListener('click', () => {
-            browserAPI.runtime.sendMessage({ type: 'OPEN_POPUP' });
+            showModal();
         });
 
         panel.querySelectorAll('.rr-btn-repeat').forEach(btn => {
@@ -150,13 +181,141 @@
 
         panel.querySelectorAll('.rr-btn-edit').forEach(btn => {
             btn.addEventListener('click', () => {
-                browserAPI.runtime.openOptionsPage();
+                showModal(btn.dataset.id);
             });
         });
     }
 
     function closeFloatingPanel() {
         document.querySelectorAll('.rr-floating-panel').forEach(el => el.remove());
+    }
+
+    async function showModal(requestId = null) {
+        closeModal();
+        
+        const isEdit = !!requestId;
+        let request = null;
+        
+        if (isEdit) {
+            const requests = await browserAPI.runtime.sendMessage({ type: 'GET_ALL_REQUESTS' });
+            request = requests.find(r => r.id === requestId);
+            if (!request) return;
+        }
+        
+        editingId = requestId;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'rr-modal-overlay';
+        overlay.innerHTML = `
+            <div class="rr-modal">
+                <div class="rr-modal-header">
+                    <h3>${isEdit ? I18n.t('dialogEditTitle') : I18n.t('dialogAddTitle')}</h3>
+                    <button class="rr-modal-close">×</button>
+                </div>
+                <form class="rr-modal-body">
+                    <div class="rr-form-group">
+                        <label>${I18n.t('labelName')} *</label>
+                        <input type="text" class="rr-input" name="name" value="${isEdit ? escapeHtml(request.name) : ''}" required>
+                    </div>
+                    <div class="rr-form-group">
+                        <label>${I18n.t('labelUrlPattern')} *</label>
+                        <input type="text" class="rr-input" name="urlPattern" value="${isEdit ? escapeHtml(request.urlPattern) : window.location.href}" required>
+                    </div>
+                    <div class="rr-form-group">
+                        <label>${I18n.t('labelCurl')} *</label>
+                        <textarea class="rr-textarea" name="curl" rows="8" required>${isEdit ? escapeHtml(request.curl) : ''}</textarea>
+                    </div>
+                    <div class="rr-form-group">
+                        <label>${I18n.t('labelCookieReplace')}</label>
+                        <input type="text" class="rr-input" name="cookieReplace" value="${isEdit ? (request.cookieReplace || []).join(', ') : ''}">
+                        <small>${I18n.t('hintCookie')}</small>
+                    </div>
+                    <div class="rr-modal-actions">
+                        ${isEdit ? `<button type="button" class="rr-btn rr-btn-danger rr-btn-delete">${I18n.t('btnDelete')}</button>` : ''}
+                        <div class="rr-modal-spacer"></div>
+                        <button type="button" class="rr-btn rr-btn-secondary rr-btn-cancel">${I18n.t('btnCancel')}</button>
+                        <button type="submit" class="rr-btn rr-btn-primary">${isEdit ? I18n.t('btnUpdate') : I18n.t('btnAdd')}</button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeModal();
+        });
+        overlay.querySelector('.rr-modal-close').addEventListener('click', closeModal);
+        overlay.querySelector('.rr-btn-cancel').addEventListener('click', closeModal);
+        
+        const deleteBtn = overlay.querySelector('.rr-btn-delete');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', async () => {
+                if (confirm(I18n.t('confirmDelete'))) {
+                    const result = await browserAPI.runtime.sendMessage({
+                        type: 'DELETE_REQUEST',
+                        id: editingId
+                    });
+                    if (result.success) {
+                        showNotification(I18n.t('notifDeleted'), 'success');
+                        closeModal();
+                        refreshPanel();
+                    } else {
+                        showNotification(I18n.t('notifError'), 'error');
+                    }
+                }
+            });
+        }
+
+        overlay.querySelector('form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const data = {
+                name: form.name.value.trim(),
+                urlPattern: form.urlPattern.value.trim(),
+                curl: form.curl.value.trim(),
+                cookieReplace: form.cookieReplace.value.split(',').map(s => s.trim()).filter(s => s)
+            };
+
+            let result;
+            if (editingId) {
+                result = await browserAPI.runtime.sendMessage({
+                    type: 'UPDATE_REQUEST',
+                    id: editingId,
+                    data
+                });
+            } else {
+                result = await browserAPI.runtime.sendMessage({
+                    type: 'CREATE_REQUEST',
+                    data
+                });
+            }
+
+            if (result.success) {
+                showNotification(editingId ? I18n.t('notifUpdated') : I18n.t('notifAdded'), 'success');
+                closeModal();
+                refreshPanel();
+            } else {
+                showNotification(`${I18n.t('notifError')}: ${result.error}`, 'error');
+            }
+        });
+    }
+
+    function closeModal() {
+        document.querySelectorAll('.rr-modal-overlay').forEach(el => el.remove());
+        editingId = null;
+    }
+
+    async function refreshPanel() {
+        const requests = await browserAPI.runtime.sendMessage({
+            type: 'GET_REQUESTS_FOR_URL',
+            url: window.location.href
+        });
+        if (requests && requests.length > 0) {
+            showFloatingPanel(requests);
+        } else {
+            closeFloatingPanel();
+        }
     }
 
     function makeDraggable(element) {

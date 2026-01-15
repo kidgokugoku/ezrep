@@ -1,17 +1,16 @@
 {
   "manifest_version": 3,
   "name": "ezrep",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Save curl commands, bind to URLs, replay with current cookies.",
   "browser_specific_settings": {
     "gecko": {
       "id": "ezrep@example.com",
-      "strict_min_version": "109.0"
-    },
-    "gecko_android": {}
-  },
-  "data_collection_permissions": {
-    "required": false
+      "strict_min_version": "109.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
   },
   "icons": {
     "16": "icons/icon16.png",

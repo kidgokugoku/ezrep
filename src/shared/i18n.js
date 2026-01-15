@@ -124,7 +124,21 @@ const I18n = {
             themeLight: 'Light',
             themeDark: 'Dark',
             themeAuto: 'Auto (System)',
-            settingsTheme: 'Theme'
+            settingsTheme: 'Theme',
+
+            cronStart: 'Start Cron',
+            cronStop: 'Stop Cron',
+            cronRunning: 'Cron running: {name}',
+            cronStopped: 'Cron stopped',
+            cronInvalid: 'Invalid cron expression',
+            cronHint: 'Format: min hour day month weekday (e.g., */5 * * * *)',
+
+            btnHistory: 'History',
+            historyTitle: 'Execution History',
+            historyEmpty: 'No execution history',
+            historyClear: 'Clear History',
+            historyConfirmClear: 'Clear all history for this request?',
+            historyCleared: 'History cleared'
         },
         'zh': {
             menuExecute: '⚡ 执行请求',
@@ -248,7 +262,21 @@ const I18n = {
             themeLight: '浅色',
             themeDark: '深色',
             themeAuto: '自动（跟随系统）',
-            settingsTheme: '主题'
+            settingsTheme: '主题',
+
+            cronStart: '启动定时',
+            cronStop: '停止定时',
+            cronRunning: 'Cron 运行中: {name}',
+            cronStopped: 'Cron 已停止',
+            cronInvalid: '无效的 cron 表达式',
+            cronHint: '格式: 分 时 日 月 周 (例如: */5 * * * *)',
+
+            btnHistory: '历史',
+            historyTitle: '执行历史',
+            historyEmpty: '暂无执行历史',
+            historyClear: '清空历史',
+            historyConfirmClear: '清空此请求的所有历史记录？',
+            historyCleared: '历史已清空'
         },
         'zh-CN': 'zh',
         'zh-TW': 'zh',

@@ -3,6 +3,7 @@ const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 let editingId = null;
 let editingGroupId = null;
 let activeTimers = {};
+let activeCrons = {};
 let allGroups = [];
 let allRequests = [];
 let currentFilter = 'all';
@@ -14,6 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyTranslations();
     
     activeTimers = await browserAPI.runtime.sendMessage({ type: 'TIMER_GET_ALL' });
+    activeCrons = await browserAPI.runtime.sendMessage({ type: 'CRON_GET_ALL' });
     
     await loadGroups();
     loadStats();
@@ -24,6 +26,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 browserAPI.runtime.onMessage.addListener((message) => {
     if (message.type === 'TIMERS_UPDATED') {
         activeTimers = message.timers;
+        loadRequests();
+    }
+    if (message.type === 'CRONS_UPDATED') {
+        activeCrons = message.crons;
         loadRequests();
     }
 });
@@ -185,8 +191,17 @@ function renderRequests() {
                     ${activeTimers[req.id] ? I18n.t('timerStop') : I18n.t('timerStart')}
                 </button>
             </div>
+            <div class="request-cron">
+                <div class="cron-input-group">
+                    <input type="text" class="cron-input" value="${activeCrons[req.id]?.expression || '*/5 * * * *'}" placeholder="*/5 * * * *">
+                </div>
+                <button class="btn btn-secondary btn-cron ${activeCrons[req.id] ? 'active' : ''}" data-id="${req.id}">
+                    ${activeCrons[req.id] ? I18n.t('cronStop') : I18n.t('cronStart')}
+                </button>
+            </div>
             <div class="request-actions">
                 <button class="btn btn-success btn-exec" data-id="${req.id}">${I18n.t('btnExecute')}</button>
+                <button class="btn btn-secondary btn-history" data-id="${req.id}">${I18n.t('btnHistory')}</button>
                 <button class="btn btn-secondary btn-edit" data-id="${req.id}">${I18n.t('btnEdit')}</button>
             </div>
         </div>
@@ -280,6 +295,23 @@ function setupRowEventListeners() {
             const input = row.querySelector('.timer-input');
             const interval = parseInt(input.value) || 60;
             handleTimerToggle(btn.dataset.id, interval, btn);
+        });
+    });
+
+    document.querySelectorAll('.btn-cron').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const row = btn.closest('.request-row');
+            const input = row.querySelector('.cron-input');
+            const expression = input.value.trim() || '*/5 * * * *';
+            handleCronToggle(btn.dataset.id, expression, btn);
+        });
+    });
+
+    document.querySelectorAll('.btn-history').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openHistoryDialog(btn.dataset.id);
         });
     });
 }
@@ -388,6 +420,80 @@ async function handleTimerToggle(requestId, interval, btn) {
         await browserAPI.runtime.sendMessage({ type: 'TIMER_START', requestId, interval });
         showNotification(I18n.t('timerRunning', { name: request?.name || I18n.t('unnamedRequest') }), 'success');
     }
+}
+
+async function handleCronToggle(requestId, expression, btn) {
+    if (activeCrons[requestId]) {
+        await browserAPI.runtime.sendMessage({ type: 'CRON_STOP', requestId });
+        showNotification(I18n.t('cronStopped'), 'info');
+    } else {
+        const result = await browserAPI.runtime.sendMessage({ type: 'CRON_START', requestId, expression });
+        if (result.success) {
+            const request = allRequests.find(r => r.id === requestId);
+            showNotification(I18n.t('cronRunning', { name: request?.name || I18n.t('unnamedRequest') }), 'success');
+        } else {
+            showNotification(I18n.t('cronInvalid'), 'error');
+        }
+    }
+}
+
+async function openHistoryDialog(requestId) {
+    const request = allRequests.find(r => r.id === requestId);
+    const history = await browserAPI.runtime.sendMessage({ type: 'GET_HISTORY', requestId, limit: 50 });
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'dialog-overlay';
+    overlay.id = 'historyDialog';
+    overlay.innerHTML = `
+        <div class="dialog history-dialog">
+            <div class="dialog-header">
+                <h2>${I18n.t('historyTitle')}: ${escapeHtml(request?.name || '')}</h2>
+                <button class="close-btn" id="closeHistoryDialog">×</button>
+            </div>
+            <div class="dialog-body">
+                ${history.length === 0 ? `
+                    <div class="empty-state">${I18n.t('historyEmpty')}</div>
+                ` : `
+                    <div class="history-list">
+                        ${history.map(h => `
+                            <div class="history-item ${h.success ? 'success' : 'error'}">
+                                <div class="history-status">
+                                    ${h.success ? `<span class="status-code">${h.statusCode}</span>` : `<span class="status-error">✗</span>`}
+                                </div>
+                                <div class="history-info">
+                                    <div class="history-method">${h.method || 'GET'}</div>
+                                    <div class="history-time">${h.responseTime}ms</div>
+                                </div>
+                                <div class="history-timestamp">${formatTimestamp(h.timestamp)}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `}
+            </div>
+            <div class="dialog-footer">
+                <button class="btn btn-danger" id="clearHistoryBtn">${I18n.t('historyClear')}</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+    document.getElementById('closeHistoryDialog').addEventListener('click', () => overlay.remove());
+    document.getElementById('clearHistoryBtn').addEventListener('click', async () => {
+        if (confirm(I18n.t('historyConfirmClear'))) {
+            await browserAPI.runtime.sendMessage({ type: 'CLEAR_HISTORY', requestId });
+            overlay.remove();
+            showNotification(I18n.t('historyCleared'), 'success');
+        }
+    });
+}
+
+function formatTimestamp(ts) {
+    const date = new Date(ts);
+    return date.toLocaleString();
 }
 
 async function openEditDialog(id) {

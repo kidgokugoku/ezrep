@@ -5,7 +5,9 @@ const StorageAdapter = {
         REQUESTS: 'req_repeater_requests',
         CONFIG: 'req_repeater_config',
         GROUPS: 'req_repeater_groups',
-        TIMERS: 'req_repeater_timers'
+        TIMERS: 'req_repeater_timers',
+        CRONS: 'req_repeater_crons',
+        HISTORY: 'req_repeater_history'
     },
 
     async getAllRequests() {
@@ -209,6 +211,94 @@ const StorageAdapter = {
             return true;
         } catch (e) {
             console.error('[StorageAdapter] Failed to save timers:', e);
+            return false;
+        }
+    },
+
+    // ==================== Cron API ====================
+    async getCrons() {
+        const result = await browserAPI.storage.local.get(this.KEYS.CRONS);
+        const data = result[this.KEYS.CRONS] || '{}';
+        try {
+            return JSON.parse(data);
+        } catch (e) {
+            console.error('[StorageAdapter] Failed to parse crons:', e);
+            return {};
+        }
+    },
+
+    async saveCrons(crons) {
+        try {
+            await browserAPI.storage.local.set({ 
+                [this.KEYS.CRONS]: JSON.stringify(crons) 
+            });
+            return true;
+        } catch (e) {
+            console.error('[StorageAdapter] Failed to save crons:', e);
+            return false;
+        }
+    },
+
+    // ==================== History API ====================
+    async getHistory(requestId = null, limit = 100) {
+        const result = await browserAPI.storage.local.get(this.KEYS.HISTORY);
+        const data = result[this.KEYS.HISTORY] || '[]';
+        try {
+            let history = JSON.parse(data);
+            if (requestId) {
+                history = history.filter(h => h.requestId === requestId);
+            }
+            return history.slice(0, limit);
+        } catch (e) {
+            console.error('[StorageAdapter] Failed to parse history:', e);
+            return [];
+        }
+    },
+
+    async addHistory(entry) {
+        try {
+            const result = await browserAPI.storage.local.get(this.KEYS.HISTORY);
+            const data = result[this.KEYS.HISTORY] || '[]';
+            let history = JSON.parse(data);
+            
+            history.unshift({
+                id: this._generateUUID(),
+                ...entry,
+                timestamp: Date.now()
+            });
+            
+            if (history.length > 1000) {
+                history = history.slice(0, 1000);
+            }
+            
+            await browserAPI.storage.local.set({ 
+                [this.KEYS.HISTORY]: JSON.stringify(history) 
+            });
+            return true;
+        } catch (e) {
+            console.error('[StorageAdapter] Failed to add history:', e);
+            return false;
+        }
+    },
+
+    async clearHistory(requestId = null) {
+        try {
+            if (requestId) {
+                const result = await browserAPI.storage.local.get(this.KEYS.HISTORY);
+                const data = result[this.KEYS.HISTORY] || '[]';
+                let history = JSON.parse(data);
+                history = history.filter(h => h.requestId !== requestId);
+                await browserAPI.storage.local.set({ 
+                    [this.KEYS.HISTORY]: JSON.stringify(history) 
+                });
+            } else {
+                await browserAPI.storage.local.set({ 
+                    [this.KEYS.HISTORY]: '[]' 
+                });
+            }
+            return true;
+        } catch (e) {
+            console.error('[StorageAdapter] Failed to clear history:', e);
             return false;
         }
     },

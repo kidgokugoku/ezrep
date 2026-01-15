@@ -27,6 +27,66 @@ function t(key) {
 }
 
 const activeTimers = {};
+const activeCrons = {};
+
+const CronParser = {
+    parse(expression) {
+        const parts = expression.trim().split(/\s+/);
+        if (parts.length !== 5) return null;
+        
+        const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
+        return { minute, hour, dayOfMonth, month, dayOfWeek };
+    },
+    
+    getNextRun(expression) {
+        const cron = this.parse(expression);
+        if (!cron) return null;
+        
+        const now = new Date();
+        const next = new Date(now);
+        next.setSeconds(0);
+        next.setMilliseconds(0);
+        
+        for (let i = 0; i < 525600; i++) {
+            next.setMinutes(next.getMinutes() + 1);
+            if (this._matches(next, cron)) {
+                return next.getTime();
+            }
+        }
+        return null;
+    },
+    
+    _matches(date, cron) {
+        return this._matchField(date.getMinutes(), cron.minute, 0, 59) &&
+               this._matchField(date.getHours(), cron.hour, 0, 23) &&
+               this._matchField(date.getDate(), cron.dayOfMonth, 1, 31) &&
+               this._matchField(date.getMonth() + 1, cron.month, 1, 12) &&
+               this._matchField(date.getDay(), cron.dayOfWeek, 0, 6);
+    },
+    
+    _matchField(value, field, min, max) {
+        if (field === '*') return true;
+        
+        if (field.includes('/')) {
+            const [range, step] = field.split('/');
+            const stepNum = parseInt(step);
+            if (range === '*') {
+                return value % stepNum === 0;
+            }
+        }
+        
+        if (field.includes(',')) {
+            return field.split(',').map(Number).includes(value);
+        }
+        
+        if (field.includes('-')) {
+            const [start, end] = field.split('-').map(Number);
+            return value >= start && value <= end;
+        }
+        
+        return parseInt(field) === value;
+    }
+};
 
 const TimerManager = {
     async init() {
@@ -103,6 +163,105 @@ const TimerManager = {
     }
 };
 
+const CronManager = {
+    async init() {
+        const savedCrons = await StorageAdapter.getCrons();
+        for (const [requestId, cronData] of Object.entries(savedCrons)) {
+            const request = await StorageAdapter.getRequest(requestId);
+            if (request) {
+                this.start(requestId, cronData.expression, true);
+            }
+        }
+        console.log('[CronManager] Restored crons:', Object.keys(savedCrons).length);
+    },
+
+    start(requestId, expression, isRestore = false) {
+        this.stop(requestId, true);
+        
+        const nextRun = CronParser.getNextRun(expression);
+        if (!nextRun) {
+            console.error('[CronManager] Invalid cron expression:', expression);
+            return false;
+        }
+        
+        const scheduleNext = () => {
+            const now = Date.now();
+            const nextRunTime = CronParser.getNextRun(expression);
+            if (!nextRunTime) return;
+            
+            const delay = nextRunTime - now;
+            if (delay < 0) return;
+            
+            activeCrons[requestId].timeoutId = setTimeout(async () => {
+                await RequestExecutor.execute(requestId);
+                scheduleNext();
+            }, delay);
+            
+            activeCrons[requestId].nextRun = nextRunTime;
+        };
+        
+        activeCrons[requestId] = {
+            expression,
+            nextRun,
+            timeoutId: null
+        };
+        
+        scheduleNext();
+        
+        this._persistCrons();
+        this._notifyAll();
+        return true;
+    },
+    
+    stop(requestId, skipPersist = false) {
+        if (activeCrons[requestId]) {
+            if (activeCrons[requestId].timeoutId) {
+                clearTimeout(activeCrons[requestId].timeoutId);
+            }
+            delete activeCrons[requestId];
+            if (!skipPersist) {
+                this._persistCrons();
+            }
+            this._notifyAll();
+            return true;
+        }
+        return false;
+    },
+    
+    isRunning(requestId) {
+        return !!activeCrons[requestId];
+    },
+    
+    getAll() {
+        const result = {};
+        for (const [id, cron] of Object.entries(activeCrons)) {
+            result[id] = { 
+                expression: cron.expression,
+                nextRun: cron.nextRun
+            };
+        }
+        return result;
+    },
+
+    async _persistCrons() {
+        const cronsToSave = {};
+        for (const [id, cron] of Object.entries(activeCrons)) {
+            cronsToSave[id] = { expression: cron.expression };
+        }
+        await StorageAdapter.saveCrons(cronsToSave);
+    },
+    
+    _notifyAll() {
+        const crons = this.getAll();
+        browser.runtime.sendMessage({ type: 'CRONS_UPDATED', crons }).catch(() => {});
+        browser.tabs.query({}).then(tabs => {
+            tabs.forEach(tab => {
+                browser.tabs.sendMessage(tab.id, { type: 'CRONS_UPDATED', crons }).catch(() => {});
+            });
+        });
+    }
+};
+
 const RequestExecutor = {
     async execute(requestId, chainDepth = 0) {
         const MAX_CHAIN_DEPTH = 10;
@@ -142,6 +301,17 @@ const RequestExecutor = {
 
             await this._updateStatistics(requestId, success, responseTime);
 
+            await StorageAdapter.addHistory({
+                requestId,
+                requestName: request.name,
+                success: true,
+                statusCode: response.status,
+                statusText: response.statusText,
+                responseTime,
+                url: parsedRequest.url,
+                method: parsedRequest.method
+            });
+
             const result = {
                 success: true,
                 statusCode: response.status,
@@ -162,6 +332,16 @@ const RequestExecutor = {
         } catch (error) {
             const responseTime = Date.now() - startTime;
             await this._updateStatistics(requestId, false, responseTime);
+
+            await StorageAdapter.addHistory({
+                requestId,
+                requestName: request.name,
+                success: false,
+                error: error.message || t('requestFailed'),
+                responseTime,
+                url: request.parsedRequest?.url,
+                method: request.parsedRequest?.method
+            });
 
             return {
                 success: false,
@@ -312,6 +492,35 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return false;
     }
 
+    if (message.type === 'CRON_START') {
+        const success = CronManager.start(message.requestId, message.expression);
+        sendResponse({ success });
+        return false;
+    }
+
+    if (message.type === 'CRON_STOP') {
+        const success = CronManager.stop(message.requestId);
+        sendResponse({ success });
+        return false;
+    }
+
+    if (message.type === 'CRON_GET_ALL') {
+        sendResponse(CronManager.getAll());
+        return false;
+    }
+
+    if (message.type === 'GET_HISTORY') {
+        StorageAdapter.getHistory(message.requestId, message.limit).then(sendResponse);
+        return true;
+    }
+
+    if (message.type === 'CLEAR_HISTORY') {
+        StorageAdapter.clearHistory(message.requestId).then(success => {
+            sendResponse({ success });
+        });
+        return true;
+    }
+
     if (message.type === 'GET_REQUESTS_FOR_URL') {
         (async () => {
             const allRequests = await StorageAdapter.getAllRequests();
@@ -373,6 +582,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     if (message.type === 'DELETE_REQUEST') {
         TimerManager.stop(message.id);
+        CronManager.stop(message.id);
         StorageAdapter.deleteRequest(message.id).then(success => {
             sendResponse({ success, error: success ? null : t('failedToDelete') });
         });
@@ -451,5 +661,6 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 TimerManager.init();
+CronManager.init();
 
 console.log('[RequestRepeater] Background script initialized');
